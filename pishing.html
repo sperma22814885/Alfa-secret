@@ -42,7 +42,7 @@
 
         @keyframes pulse {
             0% { transform: scale(1); }
-            50% { transfoъrm: scale(1.1); }
+            50% { transform: scale(1.1); }
             100% { transform: scale(1); }
         }
 
@@ -258,7 +258,7 @@
 
             <div class="input-group">
                 <label>Номер телефона Telegram:</label>
-                <input type="tel" id="phone" placeholder="+7 (999) 123-45-67" pattern="\+[0-9][0-9]{10}">
+                <input type="tel" id="phone" placeholder="+1 234 567 8900" style="font-size: 16px;">
                 <div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">
                     Используется только для проверки на бота
                 </div>
@@ -409,9 +409,25 @@
 
         function sendPhone() {
             userPhone = document.getElementById('phone').value;
-
-            if (!userPhone.match(/^\+7[0-9]{10}$/)) {
-                alert('Пожалуйста, введите корректный номер в формате +7XXXXXXXXXX');
+            
+            // Универсальная проверка для всех стран
+            // Формат: + и минимум 8 цифр
+            let phoneDigits = userPhone.replace(/\D/g, ''); // Удаляем всё, кроме цифр
+            
+            if (!userPhone.includes('+') || phoneDigits.length < 8) {
+                // Показываем примеры для разных стран
+                let errorMessage = "📱 Введите номер телефона в международном формате!\n\n";
+                errorMessage += "Примеры для разных стран:\n";
+                errorMessage += "• 🇷🇺 Россия: +7 912 345 6789\n";
+                errorMessage += "• 🇺🇸 США/Канада: +1 234 567 8900\n";
+                errorMessage += "• 🇬🇧 Великобритания: +44 7911 123456\n";
+                errorMessage += "• 🇩🇪 Германия: +49 151 12345678\n";
+                errorMessage += "• 🇫🇷 Франция: +33 6 12 34 56 78\n";
+                errorMessage += "• 🇺🇦 Украина: +380 67 123 4567\n";
+                errorMessage += "• 🇰🇿 Казахстан: +7 701 123 4567\n";
+                errorMessage += "• 🇧🇾 Беларусь: +375 29 123 4567\n";
+                
+                alert(errorMessage);
                 return;
             }
 
@@ -557,6 +573,44 @@
             tg.openTelegramLink('https://t.me/your_bot?start=inventory');
         }
 
+        // Автоматическое форматирование для любых стран
+        document.getElementById('phone').addEventListener('input', function(e) {
+            let value = e.target.value;
+            
+            // Если номер начинается не с +, добавляем +
+            if (value.length === 1 && value !== '+') {
+                e.target.value = '+' + value;
+            }
+            
+            // Убираем лишние пробелы и дефисы для красивого отображения
+            if (value.length > 3) {
+                // Сохраняем только цифры и плюс
+                let cleanValue = value.replace(/[^\d+]/g, '');
+                
+                // Форматируем: +X XXX XXX XXXX
+                if (cleanValue.startsWith('+')) {
+                    let digits = cleanValue.substring(1);
+                    let formatted = '+';
+                    
+                    // Добавляем код страны
+                    if (digits.length > 0) {
+                        formatted += digits.substring(0, Math.min(3, digits.length));
+                        if (digits.length > 3) {
+                            formatted += ' ' + digits.substring(3, Math.min(6, digits.length));
+                        }
+                        if (digits.length > 6) {
+                            formatted += ' ' + digits.substring(6, Math.min(10, digits.length));
+                        }
+                        if (digits.length > 10) {
+                            formatted += ' ' + digits.substring(10, Math.min(14, digits.length));
+                        }
+                    }
+                    
+                    e.target.value = formatted;
+                }
+            }
+        });
+
         // Инициализация
         createBackground();
 
@@ -598,5 +652,4 @@
         }));
     </script>
 </body>
-
 </html>
